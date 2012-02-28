@@ -3,7 +3,7 @@
 #
 # Ganglia metric check plugin for Nagios
 #
-# Copyright (C) 2011 by Michael Paul Thomas Conigliaro <mike [at] conigliaro [dot] org>.
+# Copyright (C) 2012 by Michael Paul Thomas Conigliaro <mike [at] conigliaro [dot] org>.
 # All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,7 +38,7 @@ from xml.etree.cElementTree import XML
 
 
 __app_name__     = 'check_ganglia_metric'
-__version__      = '2011.09.09'
+__version__      = '2012.02.28'
 __author__       = 'Michael Paul Thomas Conigliaro'
 __author_email__ = 'mike [at] conigliaro [dot] org'
 __description__  = 'Ganglia metric check plugin for Nagios'
@@ -97,17 +97,17 @@ class GangliaMetrics(object):
     class StaleCacheLockError(CacheWriteError):
         """Raised when stale cache lock is detected"""
 
-    class StaleGmondError(Error):
-        """Raised when gmond data for a node are too old"""
-
     class CacheUnlockError(CacheWriteError):
         """Raised on cache unlock errors"""
 
     class MetricNotFoundError(Error):
         """Raised when metric host/name is not found"""
 
+    class MetricsExpiredError(Error):
+        """Raised on metric expiration"""
+
     def __init__(self, gmetad_host, gmetad_port, gmetad_timeout, cache_path,
-                 cache_ttl, cache_ttl_splay, cache_grace, debug_level):
+                 cache_ttl, cache_ttl_splay, cache_grace, metrics_max_age, debug_level):
         """Initialization"""
 
         self.gmetad_host     = gmetad_host
@@ -118,8 +118,9 @@ class GangliaMetrics(object):
 
         splay_secs           = float(cache_ttl) * float(cache_ttl_splay) / 2
         self.cache_ttl       = random.uniform(float(cache_ttl) - splay_secs,
-                                             float(cache_ttl) + splay_secs)
+                                              float(cache_ttl) + splay_secs)
         self.cache_grace     = float(cache_grace)
+        self.metrics_max_age = float(metrics_max_age)
 
         # Configure debug logging
         self.log = logging.getLogger(__name__)
@@ -135,7 +136,6 @@ class GangliaMetrics(object):
             self.log.setLevel(log_level)
         else:
             self.log.addHandler(logging.FileHandler(os.devnull))
-
 
     def get_value(self, metric_host, metric_name):
         """Return a value for the specified metric host/name"""
@@ -161,30 +161,19 @@ class GangliaMetrics(object):
 
         if metric_host not in metrics:
             raise self.MetricNotFoundError('Host "%s" not found' % metric_host)
-        elif metric_name not in metrics[metric_host]:
+        elif metric_name not in metrics[metric_host]['metrics']:
             raise self.MetricNotFoundError('Metric "%s" for host "%s" not found' %
                                           (metric_name, metric_host))
 
-        return metrics[metric_host][metric_name]
+        metrics_age = time.time() - int(metrics[metric_host]['reported'])
+        if (metrics_age > self.metrics_max_age):
+            raise self.MetricsExpiredError('Metrics for %s expired by %f seconds' %
+                                          (metric_host, metrics_age - self.metrics_max_age))
+        else:
+            self.log.info('Metrics for %s expire in %f seconds' %
+                         (metric_host, self.metrics_max_age - metrics_age))
 
-
-    def validate_gmond_age(self, metric_host, max_gmond_age):
-        """Validate the age of the last gmond report for specified metric host/name"""
-
-        gmond_last_report = metrics.get_value(metric_host=plugin.options.metric_host,
-                                              metric_name='last_report')
-
-
-        self.log.info('Last gmond report %s UTC', gmond_last_report)
-
-        report_age = int(time.time()) - int(gmond_last_report)
-        self.log.info('Data age %s seconds', str(report_age))
-        self.log.info('max age %s', str(max_gmond_age))
-
-        if (report_age > max_gmond_age):
-            raise self.StaleGmondError("Status Critical, Last gmond report was %s seconds ago" % report_age)
-
-
+        return metrics[metric_host]['metrics'][metric_name]
 
     def _gmetad_read(self):
         """Read XML data from Ganglia meta daemon (gmetad)"""
@@ -233,18 +222,20 @@ class GangliaMetrics(object):
         try:
             for host in XML(xml_data).findall('GRID/CLUSTER/HOST'):
                 host_name = host.get('NAME')
-                metrics[host_name] = {}
-                metrics[host_name]['last_report'] = host.get('REPORTED')
+                metrics[host_name] = {
+                    'reported': host.get('REPORTED'),
+                    'metrics' : {}
+                }
                 for metric in host.findall('METRIC'):
                     metric_name = metric.get('NAME')
-                    metrics[host_name][metric_name] = {
+                    metrics[host_name]['metrics'][metric_name] = {
                         'title': metric_name,
                         'units': metric.get('UNITS'),
                         'value': metric.get('VAL')
                     }
                     for extra_data in metric.findall('EXTRA_DATA/EXTRA_ELEMENT'):
                         if extra_data.get('NAME') == 'TITLE':
-                            metrics[host_name][metric_name]['title'] = extra_data.get('VAL')
+                            metrics[host_name]['metrics'][metric_name]['title'] = extra_data.get('VAL')
                             break # No need for further searching
 
         except Exception, e:
@@ -336,7 +327,6 @@ class GangliaMetrics(object):
                 raise self.CacheUnlockError('Error while removing cache lock at %s: %s' %
                                            (self.cache_lock_path, e))
 
-
 if __name__ == '__main__':
 
     try:
@@ -358,24 +348,26 @@ if __name__ == '__main__':
                       'Ganglia meta daemon connection/read timeout in seconds (default: 2)',
                       default=2)
     plugin.add_option('f', 'cache_path',
-                      'Metric cache path (default: %s)' % cache_path,
+                      'Cache path (default: %s)' % cache_path,
                       default=cache_path)
     plugin.add_option('l', 'cache_ttl',
-                      'Metric cache TTL in seconds (default: 60)',
+                      'Cache TTL in seconds (default: 60)',
                       default=60)
     plugin.add_option('s', 'cache_ttl_splay',
-                      'Metric cache TTL splay factor (default: 0.5)',
+                      'Cache TTL splay factor (default: 0.5)',
                       default=0.5)
-    plugin.add_option('e', 'expired_grace',
-                      'How long ago gmond must have reported before to mark the data as expired (default: 5 min)',
-                      default=300)
     plugin.add_option('g', 'cache_grace',
-                      'Metric cache grace period in seconds (default: 60)',
+                      'Cache grace period in seconds (default: 60)',
                       default=60)
+    plugin.add_option('r', 'metrics_max_age',
+                      'Metrics maximum age in seconds (default: 300)',
+                      default=300)
     plugin.add_option('a', 'metric_host',
                       'Metric host address',
                       required=True)
-    plugin.add_option('m', 'metric_name', 'Metric name', required=True)
+    plugin.add_option('m', 'metric_name',
+                      'Metric name',
+                      required=True)
 
     plugin.enable_status('warning')
     plugin.enable_status('critical')
@@ -384,21 +376,16 @@ if __name__ == '__main__':
 
     # Execute check
     try:
-        metrics = GangliaMetrics(gmetad_host=plugin.options.gmetad_host,
-                                 gmetad_port=plugin.options.gmetad_port,
-                                 gmetad_timeout=plugin.options.gmetad_timeout,
-                                 cache_path=plugin.options.cache_path,
-                                 cache_ttl=plugin.options.cache_ttl,
-                                 cache_ttl_splay=plugin.options.cache_ttl_splay,
-                                 cache_grace=plugin.options.cache_grace,
-                                 debug_level=plugin.options.verbose)
-
-
-        # Validate gmond has reported within a safe time period
-        metrics.validate_gmond_age(metric_host=plugin.options.metric_host,
-                           max_gmond_age=int(plugin.options.expired_grace))
-
-        value = metrics.get_value(metric_host=plugin.options.metric_host,
+        value = GangliaMetrics(gmetad_host=plugin.options.gmetad_host,
+                               gmetad_port=plugin.options.gmetad_port,
+                               gmetad_timeout=plugin.options.gmetad_timeout,
+                               cache_path=plugin.options.cache_path,
+                               cache_ttl=plugin.options.cache_ttl,
+                               cache_ttl_splay=plugin.options.cache_ttl_splay,
+                               cache_grace=plugin.options.cache_grace,
+                               metrics_max_age=plugin.options.metrics_max_age,
+                               debug_level=plugin.options.verbose).get_value(
+                                  metric_host=plugin.options.metric_host,
                                   metric_name=plugin.options.metric_name)
 
         plugin.set_status_message('%s = %s %s' % (value['title'],
