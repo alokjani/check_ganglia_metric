@@ -2,14 +2,8 @@
 check_ganglia_metric
 ====================
 
-
-Introduction
-------------
-
 **check_ganglia_metric** is a `Nagios <http://nagios.org/>`_ plugin that allows
-you to trigger alerts on any Ganglia metric. This plugin was heavily inspired
-by `Vladimir Vuksan <http://vuksan.com>`_'s check_ganglia_metric.php, but it
-comes with a number of improvements.
+you to trigger alerts on any Ganglia metric.
 
 
 Installation
@@ -24,7 +18,6 @@ Installation
 ::
 
   # easy_install check_ganglia_metric
-
 
 
 Ganglia Configuration
@@ -181,28 +174,28 @@ with a "host/metric not found" error, but not before it dumps its cache:
 Known Issues
 ------------
 
-* Doesn't work with Python 2.4
+- Doesn't work with Python 2.4
 
 
 Change Log
 ----------
 
 2012.02.28
-**********
+~~~~~~~~~~
 
-* Add --metrics_max_age option
-* Merge CHANGELOG.rst into README.rst
+- Add --metrics_max_age option
+- Merge CHANGELOG.rst into README.rst
 
 2011.09.09
-**********
+~~~~~~~~~~
 
-* Fix crash when metric name has no title
-* Add CHANGELOG.rst
+- Fix crash when metric name has no title
+- Add CHANGELOG.rst
 
 2011.05.10a
-***********
+~~~~~~~~~~~
 
-* Initial public release
+- Initial public release
 
 
 License
@@ -232,6 +225,6 @@ SOFTWARE.
 Credits
 -------
 
-* `Michael Paul Thomas Conigliaro <http://conigliaro.org>`_: Original author
-* `Vladimir Vuksan <http://vuksan.com/>`_: Inspiration and many suggestions
-* Julien Rottenberg: --metrics_max_age option
+- `Michael Paul Thomas Conigliaro <http://conigliaro.org>`_: Original author
+- `Vladimir Vuksan <http://vuksan.com/>`_: Inspiration and many suggestions
+- Julien Rottenberg: --metrics_max_age option
