@@ -229,7 +229,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-Author
-------
+Credits
+-------
 
-Michael Paul Thomas Conigliaro <mike [at] conigliaro [dot] org>
+* `Michael Paul Thomas Conigliaro <http://conigliaro.org>`_: Original author
+* `Vladimir Vuksan <http://vuksan.com/>`_: Inspiration and many suggestions
+* Julien Rottenberg: --metrics_max_age option
