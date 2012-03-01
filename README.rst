@@ -226,5 +226,5 @@ Credits
 -------
 
 - `Michael Paul Thomas Conigliaro <http://conigliaro.org>`_: Original author
-- `Vladimir Vuksan <http://vuksan.com/>`_: Inspiration and many suggestions
+- `Vladimir Vuksan <http://vuksan.com/>`_: Inspiration (check_ganglia_metric.php) and many suggestions
 - Julien Rottenberg: --metrics_max_age option
