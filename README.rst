@@ -191,6 +191,7 @@ Change Log
 **********
 
 * Add --metrics_max_age option
+* Merge CHANGELOG.rst into README.rst
 
 2011.09.09
 **********
