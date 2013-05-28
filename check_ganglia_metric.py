@@ -13,12 +13,12 @@ import time
 from xml.etree.cElementTree import XML
 
 
-__app_name__     = 'check_ganglia_metric'
-__version__      = '2012.02.28'
-__author__       = 'Michael Paul Thomas Conigliaro'
+__app_name__ = 'check_ganglia_metric'
+__version__ = '2013.05.28'
+__author__ = 'Michael Paul Thomas Conigliaro'
 __author_email__ = 'mike [at] conigliaro [dot] org'
-__description__  = 'Ganglia metric check plugin for Nagios'
-__url__          = 'http://github.com/mconigliaro/check_ganglia_metric'
+__description__ = 'Ganglia metric check plugin for Nagios'
+__url__ = 'http://github.com/mconigliaro/check_ganglia_metric'
 
 
 class GangliaMetrics(object):
@@ -86,16 +86,16 @@ class GangliaMetrics(object):
                  cache_ttl, cache_ttl_splay, cache_grace, metrics_max_age, debug_level):
         """Initialization"""
 
-        self.gmetad_host     = gmetad_host
-        self.gmetad_port     = int(gmetad_port)
-        self.gmetad_timeout  = float(gmetad_timeout)
-        self.cache_path      = cache_path
+        self.gmetad_host = gmetad_host
+        self.gmetad_port = int(gmetad_port)
+        self.gmetad_timeout = float(gmetad_timeout)
+        self.cache_path = cache_path
         self.cache_lock_path = '%s.lock' % cache_path
 
-        splay_secs           = float(cache_ttl) * float(cache_ttl_splay) / 2
-        self.cache_ttl       = random.uniform(float(cache_ttl) - splay_secs,
-                                              float(cache_ttl) + splay_secs)
-        self.cache_grace     = float(cache_grace)
+        splay_secs = float(cache_ttl) * float(cache_ttl_splay) / 2
+        self.cache_ttl = random.uniform(float(cache_ttl) - splay_secs,
+                                        float(cache_ttl) + splay_secs)
+        self.cache_grace = float(cache_grace)
         self.metrics_max_age = float(metrics_max_age)
 
         # Configure debug logging
@@ -200,7 +200,7 @@ class GangliaMetrics(object):
                 host_name = host.get('NAME')
                 metrics[host_name] = {
                     'reported': host.get('REPORTED'),
-                    'metrics' : {}
+                    'metrics': {}
                 }
                 for metric in host.findall('METRIC'):
                     metric_name = metric.get('NAME')
@@ -212,7 +212,7 @@ class GangliaMetrics(object):
                     for extra_data in metric.findall('EXTRA_DATA/EXTRA_ELEMENT'):
                         if extra_data.get('NAME') == 'TITLE':
                             metrics[host_name]['metrics'][metric_name]['title'] = extra_data.get('VAL')
-                            break # No need for further searching
+                            break  # No need for further searching
 
         except Exception, e:
             raise self.GmetadXmlError('Error while parsing gmetad XML: %s' % e)
@@ -362,8 +362,8 @@ if __name__ == '__main__':
                                cache_grace=plugin.options.cache_grace,
                                metrics_max_age=plugin.options.metrics_max_age,
                                debug_level=plugin.options.verbose).get_value(
-                                  metric_host=plugin.options.metric_host,
-                                  metric_name=plugin.options.metric_name)
+                                    metric_host=plugin.options.metric_host,
+                                    metric_name=plugin.options.metric_name)
 
         plugin.set_status_message('%s = %s %s' % (value['title'],
                                                   value['value'],
@@ -377,7 +377,7 @@ if __name__ == '__main__':
             plugin.set_value(plugin.options.metric_name, value['value'])
 
     except (GangliaMetrics.MetricNotFoundError), e:
-         plugin.unknown_error(str(e))
+        plugin.unknown_error(str(e))
     except (Exception), e:
         print(e)
         sys.exit(2)
